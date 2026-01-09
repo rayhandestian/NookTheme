@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import debounce from 'debounce';
 import { Server } from '@/api/server/getServer';
 import getServers from '@/api/getServers';
 import ServerRow from '@/components/dashboard/ServerRow';
@@ -13,6 +14,9 @@ import useSWR from 'swr';
 import { PaginatedResult } from '@/api/http';
 import Pagination from '@/components/elements/Pagination';
 import { useLocation } from 'react-router-dom';
+import Input from '@/components/elements/Input';
+import Label from '@/components/elements/Label';
+import Select from '@/components/elements/Select';
 
 export default () => {
     const { search } = useLocation();
@@ -24,9 +28,18 @@ export default () => {
     const rootAdmin = useStoreState((state) => state.user.data!.rootAdmin);
     const [showOnlyAdmin, setShowOnlyAdmin] = usePersistedState(`${uuid}:show_all_servers`, false);
 
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sort, setSort] = useState('');
+
     const { data: servers, error } = useSWR<PaginatedResult<Server>>(
-        ['/api/client/servers', showOnlyAdmin && rootAdmin, page],
-        () => getServers({ page, type: showOnlyAdmin && rootAdmin ? 'admin' : undefined })
+        ['/api/client/servers', showOnlyAdmin && rootAdmin, page, searchQuery, sort],
+        () =>
+            getServers({
+                page,
+                query: searchQuery,
+                sort,
+                type: showOnlyAdmin && rootAdmin ? 'admin' : undefined,
+            })
     );
 
     useEffect(() => {
@@ -48,20 +61,52 @@ export default () => {
         if (!error) clearFlashes('dashboard');
     }, [error]);
 
+    const setQuery = useCallback(
+        debounce((value: string) => {
+            setPage(1);
+            setSearchQuery(value);
+        }, 500),
+        []
+    );
+
     return (
         <PageContentBlock className='content-dashboard' title={'Dashboard'} showFlashKey={'dashboard'}>
-            {rootAdmin && (
-                <div css={tw`mb-2 flex justify-end items-center`}>
-                    <p css={tw`uppercase text-xs text-neutral-400 mr-2`}>
-                        {showOnlyAdmin ? "Showing others' servers" : 'Showing your servers'}
-                    </p>
-                    <Switch
-                        name={'show_all_servers'}
-                        defaultChecked={showOnlyAdmin}
-                        onChange={() => setShowOnlyAdmin((s) => !s)}
-                    />
+            <div css={tw`mb-4 flex flex-col md:flex-row justify-between items-end md:items-center`}>
+                <div css={tw`w-full md:w-auto flex flex-col md:flex-row gap-4`}>
+                    <div css={tw`flex-1 md:w-64`}>
+                        <Label>Search</Label>
+                        <Input
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder={'Search for a server...'}
+                        />
+                    </div>
+                    <div css={tw`flex-1 md:w-64`}>
+                        <Label>Sort By</Label>
+                        <Select onChange={(e) => setSort(e.target.value)}>
+                            <option value={''}>Default (Name A-Z)</option>
+                            <option value={'-name'}>Name (Z-A)</option>
+                            <option value={'memory'}>Memory (Low-High)</option>
+                            <option value={'-memory'}>Memory (High-Low)</option>
+                            <option value={'cpu'}>CPU (Low-High)</option>
+                            <option value={'-cpu'}>CPU (High-Low)</option>
+                            <option value={'-created_at'}>Date Created (Newest)</option>
+                            <option value={'created_at'}>Date Created (Oldest)</option>
+                        </Select>
+                    </div>
                 </div>
-            )}
+                {rootAdmin && (
+                    <div css={tw`flex justify-end items-center mt-4 md:mt-0`}>
+                        <p css={tw`uppercase text-xs text-neutral-400 mr-2`}>
+                            {showOnlyAdmin ? "Showing others' servers" : 'Showing your servers'}
+                        </p>
+                        <Switch
+                            name={'show_all_servers'}
+                            defaultChecked={showOnlyAdmin}
+                            onChange={() => setShowOnlyAdmin((s) => !s)}
+                        />
+                    </div>
+                )}
+            </div>
             {!servers ? (
                 <Spinner centered size={'large'} />
             ) : (
