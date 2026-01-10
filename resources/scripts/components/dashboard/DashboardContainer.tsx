@@ -29,7 +29,7 @@ export default () => {
     const [showOnlyAdmin, setShowOnlyAdmin] = usePersistedState(`${uuid}:show_all_servers`, false);
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [sort, setSort] = useState('');
+    const [sort, setSort] = useState('name');
 
     const { data: servers, error } = useSWR<PaginatedResult<Server>>(
         ['/api/client/servers', showOnlyAdmin && rootAdmin, page, searchQuery, sort],
@@ -82,8 +82,8 @@ export default () => {
                     </div>
                     <div css={tw`flex-1 md:w-64`}>
                         <Label>Sort By</Label>
-                        <Select onChange={(e) => setSort(e.target.value)}>
-                            <option value={''}>Default (Name A-Z)</option>
+                        <Select onChange={(e) => setSort(e.target.value)} value={sort}>
+                            <option value={'name'}>Name (A-Z)</option>
                             <option value={'-name'}>Name (Z-A)</option>
                             <option value={'memory'}>Memory (Low-High)</option>
                             <option value={'-memory'}>Memory (High-Low)</option>

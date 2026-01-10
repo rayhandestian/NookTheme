@@ -38,7 +38,7 @@ class ClientController extends ClientApiController
             'description',
             'external_id',
             AllowedFilter::custom('*', new MultiFieldServerFilter()),
-        ]);
+        ])->allowedSorts(['name', 'memory', 'cpu', 'created_at']);
 
         $type = $request->input('type');
         // Either return all the servers the user has access to because they are an admin `?type=admin` or
